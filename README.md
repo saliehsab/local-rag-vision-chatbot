@@ -97,7 +97,7 @@ python manage.py runserver
 ## Usage
 
 1. Open: http://127.0.0.1:8000/
-2. Upload an image
+2. Upload an image or pdf document
 3. Click **Analyze**
 4. Ask questions about the content
 
