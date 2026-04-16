@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .wrap { width: 100%; max-width: 660px; display: flex; flex-direction: column; gap: 12px; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+    .header h1 { font-size: 17px; font-weight: 600; color: #111; }
+    .header span { font-size: 12px; color: #aaa; background: #fff; border: 1px solid #e5e5e5; padding: 3px 10px; border-radius: 20px; }
+    .card { background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; padding: 1rem 1.25rem; }
+    .upload-bar { display: flex; gap: 8px; align-items: center; }
+    .file-pill { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1.5px dashed #d1d5db; border-radius: 8px; cursor: pointer; font-size: 13px; color: #9ca3af; min-width: 0; }
+    .file-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-pill.ready { border-style: solid; border-color: #2563eb; color: #1d4ed8; }
+    #pdfFile { display: none; }
+    #status { font-size: 12px; color: #9ca3af; margin-top: 8px; min-height: 16px; }
+    .ok { color: #16a34a; } .err { color: #dc2626; }
+    .chat-area { height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px 0 4px; scrollbar-width: thin; scrollbar-color: #e5e5e5 transparent; }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+    .bbl { max-width: 82%; padding: 9px 13px; border-radius: 10px; font-size: 14px; line-height: 1.55; word-break: break-word; }
+    .bbl-user { align-self: flex-end; background: #2563eb; color: #fff; border-bottom-right-radius: 3px; }
+    .bbl-bot { align-self: flex-start; background: #f3f4f6; color: #111; border-bottom-left-radius: 3px; }
+    .bbl-sys { align-self: center; font-size: 12px; color: #aaa; font-style: italic; background: none; padding: 4px 0; }
+    .divider { height: 1px; background: #f0f0f0; margin: 10px 0; }
+    .input-row { display: flex; gap: 8px; align-items: center; }
+    .img-btn { width: 36px; height: 36px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; flex-shrink: 0; font-size: 16px; }
+    .img-btn:hover { background: #f9fafb; }
+    #imageFile { display: none; }
+    #imgName { font-size: 11px; color: #2563eb; margin-bottom: 6px; min-height: 14px; }
+    .txt-input { flex: 1; height: 38px; padding: 0 12px; border: 1px solid #e5e5e5; border-radius: 8px; font-size: 14px; outline: none; background: #fff; color: #111; }
+    .txt-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .txt-input:disabled { opacity: .5; }
+    .btn-primary { height: 38px; padding: 0 18px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0; }
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-outline { height: 38px; padding: 0 14px; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; font-size: 13px; cursor: pointer; color: #6b7280; flex-shrink: 0; }
+    .btn-outline:hover { background: #f9fafb; }
+    .btn-danger { color: #dc2626; border-color: #fca5a5; }
+    .btn-danger:hover { background: #fef2f2; }
+    .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(0,0,0,.1); border-top-color: #555; border-radius: 50%; animation: sp .7s linear infinite; vertical-align: middle; }
+    .bbl-user .spin { border-color: rgba(255,255,255,.3); border-top-color: #fff; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>AI Assistant</h1>
+    <span>Local-RAG-Vision-Chatbot</span>
+  </div>
+
+  <div class="card">
+    <div class="upload-bar">
+      <label for="pdfFile" class="file-pill" id="fileLabel">
+        <span>Choose a file (PDF or Image)...</span>
+      </label>
+      <input type="file" id="pdfFile" accept=".pdf, image/*">
+      <button id="uploadBtn" class="btn-primary" onclick="uploadFile()" disabled style="height:38px;padding:0 16px;font-size:13px">Analyze</button>
+      <button class="btn-outline btn-danger" onclick="clearDatabase()">Clear</button>
+    </div>
+    <p id="status"></p>
+  </div>
+
+  <div class="card">
+    <div class="chat-area" id="chatBox">
+      <span class="bbl bbl-sys">Upload a document to start.</span>
+    </div>
+    <div class="divider"></div>
+    <div id="imgName"></div>
+    <div class="input-row">
+      <label for="imageFile" class="img-btn" title="Attach a screenshot">
+        &#128247;
+        <input type="file" id="imageFile" accept="image/*">
+      </label>
+      <input type="text" class="txt-input" id="question" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')sendQuestion()" disabled>
+      <button class="btn-primary" id="askBtn" onclick="sendQuestion()" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const pdfInput = document.getElementById('pdfFile');
+  const imageInput = document.getElementById('imageFile');
+  const fileLabelSpan = document.getElementById('fileLabel').querySelector('span');
+  const fileLabel = document.getElementById('fileLabel');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const askBtn = document.getElementById('askBtn');
+  const qInput = document.getElementById('question');
+  const statusEl = document.getElementById('status');
+  const chatBox = document.getElementById('chatBox');
+  const imgName = document.getElementById('imgName');
+
+  pdfInput.addEventListener('change', function () {
+    if (this.files[0]) {
+      fileLabelSpan.textContent = this.files[0].name;
+      fileLabel.classList.add('ready');
+      uploadBtn.disabled = false;
+    }
+  });
+
+  imageInput.addEventListener('change', function () {
+    imgName.textContent = this.files[0] ? 'Image selected: ' + this.files[0].name : '';
+  });
+
+  function getCsrf() {
+    return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+  }
+
+  function addBubble(text, type) {
+    const el = document.createElement('div');
+    el.className = 'bbl bbl-' + type;
+    el.textContent = text;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return el;
+  }
+
+  function uploadFile() {
+    const file = pdfInput.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('doc_file', file);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<span class="spin"></span>';
+    statusEl.textContent = 'Processing...';
+    statusEl.className = '';
+    
+    fetch('/upload/', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        statusEl.textContent = data.message;
+        statusEl.className = data.status === 'success' ? 'ok' : 'err';
+        if (data.status === 'success') {
+          qInput.disabled = false;
+          askBtn.disabled = false;
+          addBubble('Knowledge base updated with ' + file.name, 'sys');
+        }
+      })
+      .catch(() => { statusEl.textContent = 'Process failed.'; statusEl.className = 'err'; })
+      .finally(() => { uploadBtn.disabled = false; uploadBtn.textContent = 'Analyze'; });
+  }
+
+  function sendQuestion() {
+    const q = qInput.value.trim();
+    const img = imageInput.files[0];
+    if (!q && !img) return;
+    
+    addBubble(q || '[Inquiry with attached image]', 'user');
+    qInput.value = '';
+    imgName.textContent = '';
+    
+    const thinking = addBubble('', 'bot');
+    thinking.innerHTML = '<span class="spin"></span>';
+    askBtn.disabled = true;
+    qInput.disabled = true;
+
+    const fd = new FormData();
+    fd.append('question', q);
+    if (img) fd.append('image_file', img);
+    
+    fetch('/ask/', { method: 'POST', headers: { 'X-CSRFToken': getCsrf() }, body: fd })
+      .then(r => r.json())
+      .then(data => {
+        thinking.innerHTML = '';
+        thinking.textContent = data.answer || 'No answer found.';
+      })
+      .catch(() => { thinking.textContent = 'Network error.'; })
+      .finally(() => {
+        askBtn.disabled = false;
+        qInput.disabled = false;
+        imageInput.value = '';
+        qInput.focus();
+      });
+  }
+
+  function clearDatabase() {
+    if (!confirm('Reset the database and chat history?')) return;
+    fetch('/clear/', { method: 'POST', headers: { 'X-CSRFToken': getCsrf() } })
+      .then(r => r.json())
+      .then(data => { alert(data.message); location.reload(); });
+  }
+</script>
+</body>
+</html>
